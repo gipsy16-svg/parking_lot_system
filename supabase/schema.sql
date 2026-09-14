@@ -1,6 +1,7 @@
 create extension if not exists pgcrypto;
 
 drop function if exists exit_vehicle(text);
+drop function if exists arrive_vehicle(text, text, text, text);
 drop function if exists arrive_vehicle(text, text, text);
 drop function if exists normalize_waiting_queue();
 drop function if exists next_record_id();
@@ -101,7 +102,8 @@ $$;
 create or replace function arrive_vehicle(
   plate_number text,
   owner_name text,
-  vehicle_type text
+  vehicle_type text,
+  requested_slot text default null
 )
 returns jsonb
 language plpgsql
@@ -112,6 +114,7 @@ declare
   normalized_plate text := upper(trim(plate_number));
   normalized_owner text := trim(owner_name);
   normalized_type text := trim(vehicle_type);
+  normalized_requested_slot text := nullif(upper(trim(coalesce(requested_slot, ''))), '');
   available_slot text;
   assigned_queue integer;
 begin
@@ -125,6 +128,10 @@ begin
     return jsonb_build_object('ok', false, 'message', 'Vehicle type is invalid.');
   end if;
 
+  if normalized_requested_slot is not null and normalized_requested_slot not in ('P001', 'P002', 'P003', 'P004', 'P005') then
+    return jsonb_build_object('ok', false, 'message', 'Parking slot is invalid.');
+  end if;
+
   if exists (
     select 1
     from parking_records records
@@ -134,19 +141,32 @@ begin
     return jsonb_build_object('ok', false, 'message', normalized_plate || ' is already parked or waiting.');
   end if;
 
-  select slots.slot_id
-  into available_slot
-  from (
-    values ('P001'), ('P002'), ('P003'), ('P004'), ('P005')
-  ) slots(slot_id)
-  where not exists (
-    select 1
-    from parking_records records
-    where records.slot_id = slots.slot_id
-      and records.status = 'Parked'
-  )
-  order by slots.slot_id
-  limit 1;
+  if normalized_requested_slot is not null then
+    if exists (
+      select 1
+      from parking_records records
+      where records.slot_id = normalized_requested_slot
+        and records.status = 'Parked'
+    ) then
+      return jsonb_build_object('ok', false, 'message', normalized_requested_slot || ' is already occupied.');
+    end if;
+
+    available_slot := normalized_requested_slot;
+  else
+    select slots.slot_id
+    into available_slot
+    from (
+      values ('P001'), ('P002'), ('P003'), ('P004'), ('P005')
+    ) slots(slot_id)
+    where not exists (
+      select 1
+      from parking_records records
+      where records.slot_id = slots.slot_id
+        and records.status = 'Parked'
+    )
+    order by slots.slot_id
+    limit 1;
+  end if;
 
   if available_slot is not null then
     insert into parking_records (
@@ -285,9 +305,9 @@ $$;
 
 revoke all on function next_record_id() from public, anon, authenticated;
 revoke all on function normalize_waiting_queue() from public, anon, authenticated;
-revoke all on function arrive_vehicle(text, text, text) from public;
+revoke all on function arrive_vehicle(text, text, text, text) from public;
 revoke all on function exit_vehicle(text) from public;
-grant execute on function arrive_vehicle(text, text, text) to anon, authenticated;
+grant execute on function arrive_vehicle(text, text, text, text) to anon, authenticated;
 grant execute on function exit_vehicle(text) to anon, authenticated;
 
 insert into parking_records

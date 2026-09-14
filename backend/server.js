@@ -68,12 +68,13 @@ app.get("/api/records", asyncHandler(async (_request, response) => {
 
 app.post("/api/arrive", asyncHandler(async (request, response) => {
   const client = requireSupabase();
-  const { plateNumber, ownerName, vehicleType } = request.body;
+  const { plateNumber, ownerName, vehicleType, slotId } = request.body;
 
   const { data, error } = await client.rpc("arrive_vehicle", {
     plate_number: String(plateNumber || "").trim().toUpperCase(),
     owner_name: String(ownerName || "").trim(),
     vehicle_type: String(vehicleType || "").trim(),
+    requested_slot: String(slotId || "").trim().toUpperCase(),
   });
 
   if (error) {

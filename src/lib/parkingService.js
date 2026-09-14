@@ -22,10 +22,10 @@ export async function listRecords() {
   return Array.isArray(records) ? records : [];
 }
 
-export async function arriveVehicle({ plateNumber, ownerName, vehicleType }) {
+export async function arriveVehicle({ plateNumber, ownerName, vehicleType, slotId }) {
   return apiRequest("/api/arrive", {
     method: "POST",
-    body: JSON.stringify({ plateNumber, ownerName, vehicleType }),
+    body: JSON.stringify({ plateNumber, ownerName, vehicleType, slotId }),
   });
 }
 

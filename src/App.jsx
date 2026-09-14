@@ -114,6 +114,7 @@ function App() {
     plateNumber: "",
     ownerName: "",
     vehicleType: "Car",
+    slotId: "",
   });
   const [exitPlate, setExitPlate] = useState("");
 
@@ -129,6 +130,10 @@ function App() {
   const slotMap = useMemo(
     () => new Map(parked.map((record) => [record.slot_id, record])),
     [parked],
+  );
+  const availableSlots = useMemo(
+    () => slotIds().filter((slotId) => !slotMap.has(slotId)),
+    [slotMap],
   );
 
   async function refreshRecords() {
@@ -147,6 +152,16 @@ function App() {
     refreshRecords();
   }, []);
 
+  useEffect(() => {
+    setArrivalForm((current) => {
+      if (availableSlots.includes(current.slotId)) {
+        return current;
+      }
+
+      return { ...current, slotId: availableSlots[0] || "" };
+    });
+  }, [availableSlots]);
+
   async function handleArrival(event) {
     event.preventDefault();
     setArrivalLoading(true);
@@ -154,7 +169,12 @@ function App() {
       const result = await arriveVehicle(arrivalForm);
       setNotice(result.message);
       if (result.ok) {
-        setArrivalForm({ plateNumber: "", ownerName: "", vehicleType: "Car" });
+        setArrivalForm((current) => ({
+          plateNumber: "",
+          ownerName: "",
+          vehicleType: "Car",
+          slotId: current.slotId,
+        }));
       }
       await refreshRecords();
     } catch (error) {
@@ -293,7 +313,30 @@ function App() {
                 ))}
               </select>
             </label>
-            <button type="submit" disabled={arrivalLoading || exitLoading || !hasBackendConfig}>
+            <label>
+              Parking Slot
+              <select
+                value={arrivalForm.slotId}
+                onChange={(event) =>
+                  setArrivalForm((current) => ({ ...current, slotId: event.target.value }))
+                }
+                disabled={availableSlots.length === 0}
+              >
+                {availableSlots.length === 0 ? (
+                  <option value="">No available slots</option>
+                ) : (
+                  availableSlots.map((slotId) => (
+                    <option key={slotId} value={slotId}>
+                      {slotId}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+            <button
+              type="submit"
+              disabled={arrivalLoading || exitLoading || !hasBackendConfig || availableSlots.length === 0}
+            >
               {arrivalLoading ? (
                 <LoaderCircle className="spin-icon" size={18} aria-hidden="true" />
               ) : (
