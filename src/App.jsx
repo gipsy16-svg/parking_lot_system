@@ -1,18 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity,
   Car,
-  CheckCircle2,
-  Clock3,
   Database,
   DoorOpen,
   LogIn,
-  Play,
   RefreshCcw,
   LoaderCircle,
-  ShieldCheck,
-  TriangleAlert,
-  UsersRound,
 } from "lucide-react";
 import {
   arriveVehicle,
@@ -26,90 +19,12 @@ import {
 
 const vehicleTypes = ["Car", "Motorcycle", "Van", "Truck"];
 
-const demos = {
-  concurrent: {
-    label: "Concurrent Arrival",
-    icon: UsersRound,
-    lines: [
-      "DEMO-001 -> arriving",
-      "DEMO-002 -> arriving",
-      "DEMO-003 -> arriving",
-      "DEMO-004 -> arriving",
-      "DEMO-005 -> arriving",
-      "DEMO-006 -> no slot available, added to queue",
-      "DEMO-007 -> no slot available, added to queue",
-      "All arrivals finished with one shared parking state.",
-    ],
-  },
-  race: {
-    label: "Race Condition",
-    icon: TriangleAlert,
-    lines: [
-      "RACE-1 -> checked P001 without lock",
-      "RACE-2 -> checked P001 without lock",
-      "RACE-1 -> saw P001 as available",
-      "RACE-2 -> also saw P001 as available",
-      "Both workers attempted to assign the same slot.",
-    ],
-  },
-  sync: {
-    label: "Synchronization",
-    icon: ShieldCheck,
-    lines: [
-      "Thread A -> waiting",
-      "Thread A -> entered critical section",
-      "Thread A -> finished",
-      "Thread B -> entered critical section",
-      "Thread C -> entered critical section",
-      "Only one worker changed parking data at a time.",
-    ],
-  },
-  semaphore: {
-    label: "Semaphore",
-    icon: Activity,
-    lines: [
-      "CAR-001 -> access granted",
-      "CAR-002 -> access granted",
-      "CAR-003 -> access granted",
-      "CAR-004 -> waiting",
-      "CAR-005 -> waiting",
-      "CAR-006 -> waiting",
-      "Three cars used the limited resource together.",
-    ],
-  },
-  deadlock: {
-    label: "Deadlock Demo",
-    icon: Clock3,
-    lines: [
-      "Vehicle A -> acquired Gate Lock",
-      "Vehicle B -> acquired Parking Slot Lock",
-      "Vehicle A -> waiting for Parking Slot Lock",
-      "Vehicle B -> waiting for Gate Lock",
-      "Deadlock detected: circular waiting.",
-    ],
-  },
-  prevention: {
-    label: "Deadlock Prevention",
-    icon: CheckCircle2,
-    lines: [
-      "Vehicle A -> acquired Gate Lock",
-      "Vehicle A -> acquired Parking Slot Lock",
-      "Vehicle A -> completed",
-      "Vehicle B -> acquired Gate Lock",
-      "Vehicle B -> acquired Parking Slot Lock",
-      "Consistent lock order prevented deadlock.",
-    ],
-  },
-};
-
 function App() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [arrivalLoading, setArrivalLoading] = useState(false);
   const [exitLoading, setExitLoading] = useState(false);
   const [notice, setNotice] = useState("Ready");
-  const [activeDemo, setActiveDemo] = useState("concurrent");
-  const [demoOutput, setDemoOutput] = useState([]);
   const [arrivalForm, setArrivalForm] = useState({
     plateNumber: "",
     ownerName: "",
@@ -199,16 +114,6 @@ function App() {
     } finally {
       setExitLoading(false);
     }
-  }
-
-  function runDemo(key) {
-    setActiveDemo(key);
-    setDemoOutput([]);
-    demos[key].lines.forEach((line, index) => {
-      window.setTimeout(() => {
-        setDemoOutput((current) => [...current, line]);
-      }, index * 260);
-    });
   }
 
   return (
@@ -425,40 +330,6 @@ function App() {
         </TablePanel>
       </section>
 
-      <section className="demo-section">
-        <div className="section-heading">
-          <h2>Parallel Systems Demos</h2>
-        </div>
-        <div className="demo-layout">
-          <div className="demo-buttons">
-            {Object.entries(demos).map(([key, demo]) => {
-              const Icon = demo.icon;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={activeDemo === key ? "selected" : ""}
-                  onClick={() => runDemo(key)}
-                >
-                  <Icon size={18} aria-hidden="true" />
-                  {demo.label}
-                </button>
-              );
-            })}
-          </div>
-          <div className="demo-output" aria-live="polite">
-            <div className="demo-output-header">
-              <Play size={16} aria-hidden="true" />
-              <strong>{demos[activeDemo].label}</strong>
-            </div>
-            {demoOutput.length === 0 ? (
-              <p className="demo-muted">Press a demo control to start.</p>
-            ) : (
-              demoOutput.map((line, index) => <p key={`${line}-${index}`}>{line}</p>)
-            )}
-          </div>
-        </div>
-      </section>
     </main>
   );
 }
