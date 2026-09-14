@@ -1,8 +1,9 @@
 export const TOTAL_SLOTS = 5;
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const needsConfiguredBackend = import.meta.env.PROD && !API_BASE_URL;
 
-export const hasBackendConfig = true;
+export const hasBackendConfig = !needsConfiguredBackend;
 
 export function slotIds() {
   return Array.from({ length: TOTAL_SLOTS }, (_, index) => `P${String(index + 1).padStart(3, "0")}`);
@@ -17,7 +18,8 @@ export function sortRecords(rows) {
 }
 
 export async function listRecords() {
-  return apiRequest("/api/records");
+  const records = await apiRequest("/api/records");
+  return Array.isArray(records) ? records : [];
 }
 
 export async function arriveVehicle({ plateNumber, ownerName, vehicleType }) {
@@ -35,6 +37,12 @@ export async function exitVehicle(plateNumber) {
 }
 
 async function apiRequest(path, options = {}) {
+  if (needsConfiguredBackend) {
+    throw new Error(
+      "Frontend backend URL is missing. Add VITE_API_BASE_URL in Vercel, then redeploy.",
+    );
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
@@ -43,10 +51,17 @@ async function apiRequest(path, options = {}) {
     ...options,
   });
 
-  const payload = await response.json().catch(() => null);
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json") ? await response.json() : null;
 
   if (!response.ok) {
     throw new Error(payload?.message || "Backend API request failed.");
+  }
+
+  if (!payload) {
+    throw new Error(
+      "Backend API did not return JSON. Check VITE_API_BASE_URL and your Render backend URL.",
+    );
   }
 
   return payload;
