@@ -35,13 +35,18 @@ app.get("/", (_request, response) => {
   });
 });
 
-app.get("/api/health", (_request, response) => {
+app.get("/api/health", asyncHandler(async (_request, response) => {
+  const supabaseStatus = await checkSupabaseConnection();
+
   response.json({
     ok: true,
     supabaseConfigured: Boolean(supabase),
+    supabaseReachable: supabaseStatus.ok,
+    supabaseHost: supabaseUrl ? safeHost(supabaseUrl) : null,
+    supabaseError: supabaseStatus.error,
     requiredEnv: supabase ? [] : ["SUPABASE_URL", "SUPABASE_ANON_KEY"],
   });
-});
+}));
 
 app.get("/api/records", asyncHandler(async (_request, response) => {
   const client = requireSupabase();
@@ -91,9 +96,14 @@ app.post("/api/exit", asyncHandler(async (request, response) => {
 
 app.use((error, _request, response, _next) => {
   const status = error.status || 500;
+  const message =
+    error.name === "TypeError" && error.message === "fetch failed"
+      ? "Backend cannot reach Supabase. Check SUPABASE_URL and SUPABASE_ANON_KEY in Render, then redeploy."
+      : error.message || "Backend error";
+
   response.status(status).json({
     ok: false,
-    message: error.message || "Backend error",
+    message,
   });
 });
 
@@ -111,6 +121,33 @@ function requireSupabase() {
   }
 
   return supabase;
+}
+
+async function checkSupabaseConnection() {
+  if (!supabase) {
+    return { ok: false, error: "Missing SUPABASE_URL or SUPABASE_ANON_KEY." };
+  }
+
+  try {
+    const { error } = await supabase.from("parking_records").select("record_id", { count: "exact", head: true });
+    return error ? { ok: false, error: error.message } : { ok: true, error: null };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error.name === "TypeError" && error.message === "fetch failed"
+          ? "Cannot connect to Supabase. Verify the Render SUPABASE_URL value points to your Supabase project URL."
+          : error.message || "Supabase connection failed.",
+    };
+  }
+}
+
+function safeHost(url) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "Invalid SUPABASE_URL";
+  }
 }
 
 function asyncHandler(handler) {
