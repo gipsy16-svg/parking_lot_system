@@ -5,12 +5,9 @@ import {
   DoorOpen,
   LogIn,
   Pencil,
-  Play,
   RefreshCcw,
   LoaderCircle,
   Save,
-  ShieldCheck,
-  TriangleAlert,
   X,
 } from "lucide-react";
 import {
@@ -26,31 +23,6 @@ import {
 
 const vehicleTypes = ["Car", "Motorcycle", "Van", "Truck"];
 
-const raceScenarios = {
-  unsafe: {
-    title: "Race Condition",
-    icon: TriangleAlert,
-    lines: [
-      "Computer A checks P003: available",
-      "Computer B checks P003: available",
-      "Computer A assigns VNB768 to P003",
-      "Computer B assigns ABC123 to P003",
-      "Result: two users believed they owned the same slot.",
-    ],
-  },
-  protected: {
-    title: "Protected By Lock",
-    icon: ShieldCheck,
-    lines: [
-      "Computer A enters the database function first",
-      "Database locks parking_records",
-      "Computer A assigns VNB768 to P003",
-      "Computer B waits, then checks P003 again",
-      "Result: Computer B sees P003 is occupied and must choose another slot.",
-    ],
-  },
-};
-
 function App() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +30,6 @@ function App() {
   const [exitLoading, setExitLoading] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [notice, setNotice] = useState("Ready");
-  const [raceMode, setRaceMode] = useState("unsafe");
-  const [raceOutput, setRaceOutput] = useState([]);
   const [arrivalForm, setArrivalForm] = useState({
     plateNumber: "",
     ownerName: "",
@@ -187,16 +157,6 @@ function App() {
       ownerName: record.owner_name,
       vehicleType: record.vehicle_type,
       slotId: record.slot_id,
-    });
-  }
-
-  function runRaceScenario(mode) {
-    setRaceMode(mode);
-    setRaceOutput([]);
-    raceScenarios[mode].lines.forEach((line, index) => {
-      window.setTimeout(() => {
-        setRaceOutput((current) => [...current, line]);
-      }, index * 420);
     });
   }
 
@@ -493,41 +453,6 @@ function App() {
             </tbody>
           </table>
         </TablePanel>
-      </section>
-
-      <section className="race-section">
-        <div className="section-heading">
-          <h2>Race Condition Simulation</h2>
-        </div>
-        <div className="race-layout">
-          <div className="race-actions">
-            {Object.entries(raceScenarios).map(([mode, scenario]) => {
-              const Icon = scenario.icon;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  className={raceMode === mode ? "selected" : ""}
-                  onClick={() => runRaceScenario(mode)}
-                >
-                  <Icon size={18} aria-hidden="true" />
-                  {scenario.title}
-                </button>
-              );
-            })}
-          </div>
-          <div className="race-output" aria-live="polite">
-            <div className="race-output-header">
-              <Play size={16} aria-hidden="true" />
-              <strong>{raceScenarios[raceMode].title}</strong>
-            </div>
-            {raceOutput.length === 0 ? (
-              <p className="race-muted">Press a simulation button to start.</p>
-            ) : (
-              raceOutput.map((line, index) => <p key={`${line}-${index}`}>{line}</p>)
-            )}
-          </div>
-        </div>
       </section>
 
     </main>
