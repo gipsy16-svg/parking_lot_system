@@ -136,3 +136,5 @@ $$;
 
 revoke all on function arrive_vehicle(text, text, text, text) from public;
 grant execute on function arrive_vehicle(text, text, text, text) to anon, authenticated;
+
+notify pgrst, 'reload schema';
