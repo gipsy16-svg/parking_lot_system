@@ -83,7 +83,8 @@ h2 {
 .metric,
 .slots-panel,
 .forms-panel,
-.table-panel {
+.table-panel,
+.race-section {
   border: 1px solid #d4dce3;
   border-radius: 8px;
   background: #ffffff;
@@ -169,7 +170,8 @@ h2 {
 
 .slots-panel,
 .forms-panel,
-.table-panel {
+.table-panel,
+.race-section {
   padding: 16px;
 }
 
@@ -246,6 +248,25 @@ h2 {
   font-weight: 800;
 }
 
+.slot-update-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 8px;
+  color: #7b271e;
+  background: #ffe0dc;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.slot-update-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .forms-panel {
   display: grid;
   gap: 14px;
@@ -283,7 +304,8 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(43, 122, 162, 0.14);
 }
 
-.form-block button {
+.form-block button,
+.race-actions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -298,6 +320,22 @@ select:focus {
 
 .form-block button:disabled {
   background: #789bad;
+}
+
+.form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.form-block .secondary-button {
+  color: #1f5f7a;
+  background: #e8f1f6;
+}
+
+.update-form {
+  padding-top: 16px;
+  border-top: 1px solid #e4e9ee;
 }
 
 .form-block + .form-block {
@@ -372,6 +410,60 @@ td {
   text-align: center;
 }
 
+.race-section {
+  margin-top: 14px;
+}
+
+.race-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.race-actions {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+
+.race-actions button {
+  justify-content: flex-start;
+  color: #21303b;
+  background: #edf3f7;
+}
+
+.race-actions button.selected {
+  color: #ffffff;
+  background: #1f5f7a;
+}
+
+.race-output {
+  min-height: 192px;
+  padding: 14px;
+  border: 1px solid #d7e1e9;
+  border-radius: 8px;
+  background: #111820;
+  color: #dbe7ef;
+}
+
+.race-output-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #ffffff;
+}
+
+.race-output p {
+  margin: 0 0 8px;
+  font-family: "Cascadia Code", "Courier New", monospace;
+  font-size: 0.88rem;
+}
+
+.race-muted {
+  color: #8fa4b2;
+}
+
 @media (max-width: 920px) {
   .app-header,
   .toolbar {
@@ -380,7 +472,8 @@ td {
 
   .app-header,
   .main-grid,
-  .data-grid {
+  .data-grid,
+  .race-layout {
     grid-template-columns: 1fr;
   }
 

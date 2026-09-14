@@ -29,6 +29,13 @@ export async function arriveVehicle({ plateNumber, ownerName, vehicleType, slotI
   });
 }
 
+export async function updateVehicle({ recordId, plateNumber, ownerName, vehicleType, slotId }) {
+  return apiRequest("/api/update", {
+    method: "POST",
+    body: JSON.stringify({ recordId, plateNumber, ownerName, vehicleType, slotId }),
+  });
+}
+
 export async function exitVehicle(plateNumber) {
   return apiRequest("/api/exit", {
     method: "POST",

@@ -4,8 +4,14 @@ import {
   Database,
   DoorOpen,
   LogIn,
+  Pencil,
+  Play,
   RefreshCcw,
   LoaderCircle,
+  Save,
+  ShieldCheck,
+  TriangleAlert,
+  X,
 } from "lucide-react";
 import {
   arriveVehicle,
@@ -15,22 +21,52 @@ import {
   slotIds,
   sortRecords,
   TOTAL_SLOTS,
+  updateVehicle,
 } from "./lib/parkingService";
 
 const vehicleTypes = ["Car", "Motorcycle", "Van", "Truck"];
+
+const raceScenarios = {
+  unsafe: {
+    title: "Race Condition",
+    icon: TriangleAlert,
+    lines: [
+      "Computer A checks P003: available",
+      "Computer B checks P003: available",
+      "Computer A assigns VNB768 to P003",
+      "Computer B assigns ABC123 to P003",
+      "Result: two users believed they owned the same slot.",
+    ],
+  },
+  protected: {
+    title: "Protected By Lock",
+    icon: ShieldCheck,
+    lines: [
+      "Computer A enters the database function first",
+      "Database locks parking_records",
+      "Computer A assigns VNB768 to P003",
+      "Computer B waits, then checks P003 again",
+      "Result: Computer B sees P003 is occupied and must choose another slot.",
+    ],
+  },
+};
 
 function App() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [arrivalLoading, setArrivalLoading] = useState(false);
   const [exitLoading, setExitLoading] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
   const [notice, setNotice] = useState("Ready");
+  const [raceMode, setRaceMode] = useState("unsafe");
+  const [raceOutput, setRaceOutput] = useState([]);
   const [arrivalForm, setArrivalForm] = useState({
     plateNumber: "",
     ownerName: "",
     vehicleType: "Car",
     slotId: "",
   });
+  const [updateForm, setUpdateForm] = useState(null);
   const [exitPlate, setExitPlate] = useState("");
 
   const parked = useMemo(() => records.filter((record) => record.status === "Parked"), [records]);
@@ -50,6 +86,13 @@ function App() {
     () => slotIds().filter((slotId) => !slotMap.has(slotId)),
     [slotMap],
   );
+  const updateSlotOptions = useMemo(() => {
+    if (!updateForm?.slotId) {
+      return availableSlots;
+    }
+
+    return [updateForm.slotId, ...availableSlots.filter((slotId) => slotId !== updateForm.slotId)];
+  }, [availableSlots, updateForm]);
 
   async function refreshRecords() {
     setLoading(true);
@@ -116,6 +159,47 @@ function App() {
     }
   }
 
+  async function handleUpdate(event) {
+    event.preventDefault();
+    if (!updateForm) {
+      return;
+    }
+
+    setUpdateLoading(true);
+    try {
+      const result = await updateVehicle(updateForm);
+      setNotice(result.message);
+      if (result.ok) {
+        setUpdateForm(null);
+      }
+      await refreshRecords();
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setUpdateLoading(false);
+    }
+  }
+
+  function startUpdate(record) {
+    setUpdateForm({
+      recordId: record.record_id,
+      plateNumber: record.plate_number,
+      ownerName: record.owner_name,
+      vehicleType: record.vehicle_type,
+      slotId: record.slot_id,
+    });
+  }
+
+  function runRaceScenario(mode) {
+    setRaceMode(mode);
+    setRaceOutput([]);
+    raceScenarios[mode].lines.forEach((line, index) => {
+      window.setTimeout(() => {
+        setRaceOutput((current) => [...current, line]);
+      }, index * 420);
+    });
+  }
+
   return (
     <main className="shell">
       <header className="app-header">
@@ -163,13 +247,24 @@ function App() {
                     <span>{carInSlot ? "Occupied" : "Available"}</span>
                   </div>
                   {carInSlot ? (
-                    <div className="slot-vehicle">
-                      <Car size={20} aria-hidden="true" />
-                      <div>
-                        <strong>{carInSlot.plate_number}</strong>
-                        <span>{carInSlot.owner_name}</span>
+                    <>
+                      <div className="slot-vehicle">
+                        <Car size={20} aria-hidden="true" />
+                        <div>
+                          <strong>{carInSlot.plate_number}</strong>
+                          <span>{carInSlot.owner_name}</span>
+                        </div>
                       </div>
-                    </div>
+                      <button
+                        type="button"
+                        className="slot-update-button"
+                        onClick={() => startUpdate(carInSlot)}
+                        disabled={updateLoading || !hasBackendConfig}
+                      >
+                        <Pencil size={14} aria-hidden="true" />
+                        Update
+                      </button>
+                    </>
                   ) : (
                     <div className="slot-empty">Open</div>
                   )}
@@ -250,6 +345,76 @@ function App() {
             </button>
           </form>
 
+          {updateForm && (
+            <form className="form-block update-form" onSubmit={handleUpdate}>
+              <div className="section-heading">
+                <h2>Update Vehicle</h2>
+              </div>
+              <label>
+                Plate Number
+                <input
+                  value={updateForm.plateNumber}
+                  onChange={(event) =>
+                    setUpdateForm((current) => ({ ...current, plateNumber: event.target.value }))
+                  }
+                  placeholder="ABC123"
+                />
+              </label>
+              <label>
+                Owner Name
+                <input
+                  value={updateForm.ownerName}
+                  onChange={(event) =>
+                    setUpdateForm((current) => ({ ...current, ownerName: event.target.value }))
+                  }
+                  placeholder="Owner"
+                />
+              </label>
+              <label>
+                Vehicle Type
+                <select
+                  value={updateForm.vehicleType}
+                  onChange={(event) =>
+                    setUpdateForm((current) => ({ ...current, vehicleType: event.target.value }))
+                  }
+                >
+                  {vehicleTypes.map((type) => (
+                    <option key={type}>{type}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Parking Slot
+                <select
+                  value={updateForm.slotId}
+                  onChange={(event) =>
+                    setUpdateForm((current) => ({ ...current, slotId: event.target.value }))
+                  }
+                >
+                  {updateSlotOptions.map((slotId) => (
+                    <option key={slotId} value={slotId}>
+                      {slotId}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="form-actions">
+                <button type="button" className="secondary-button" onClick={() => setUpdateForm(null)}>
+                  <X size={18} aria-hidden="true" />
+                  Cancel
+                </button>
+                <button type="submit" disabled={arrivalLoading || exitLoading || updateLoading || !hasBackendConfig}>
+                  {updateLoading ? (
+                    <LoaderCircle className="spin-icon" size={18} aria-hidden="true" />
+                  ) : (
+                    <Save size={18} aria-hidden="true" />
+                  )}
+                  {updateLoading ? "Updating..." : "Save Update"}
+                </button>
+              </div>
+            </form>
+          )}
+
           <form className="form-block" onSubmit={handleExit}>
             <div className="section-heading">
               <h2>Car Exit</h2>
@@ -328,6 +493,41 @@ function App() {
             </tbody>
           </table>
         </TablePanel>
+      </section>
+
+      <section className="race-section">
+        <div className="section-heading">
+          <h2>Race Condition Simulation</h2>
+        </div>
+        <div className="race-layout">
+          <div className="race-actions">
+            {Object.entries(raceScenarios).map(([mode, scenario]) => {
+              const Icon = scenario.icon;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  className={raceMode === mode ? "selected" : ""}
+                  onClick={() => runRaceScenario(mode)}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  {scenario.title}
+                </button>
+              );
+            })}
+          </div>
+          <div className="race-output" aria-live="polite">
+            <div className="race-output-header">
+              <Play size={16} aria-hidden="true" />
+              <strong>{raceScenarios[raceMode].title}</strong>
+            </div>
+            {raceOutput.length === 0 ? (
+              <p className="race-muted">Press a simulation button to start.</p>
+            ) : (
+              raceOutput.map((line, index) => <p key={`${line}-${index}`}>{line}</p>)
+            )}
+          </div>
+        </div>
       </section>
 
     </main>

@@ -84,6 +84,25 @@ app.post("/api/arrive", asyncHandler(async (request, response) => {
   response.json(data);
 }));
 
+app.post("/api/update", asyncHandler(async (request, response) => {
+  const client = requireSupabase();
+  const { recordId, plateNumber, ownerName, vehicleType, slotId } = request.body;
+
+  const { data, error } = await client.rpc("update_vehicle", {
+    target_record_id: String(recordId || "").trim(),
+    plate_number: String(plateNumber || "").trim().toUpperCase(),
+    owner_name: String(ownerName || "").trim(),
+    vehicle_type: String(vehicleType || "").trim(),
+    requested_slot: String(slotId || "").trim().toUpperCase(),
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  response.json(data);
+}));
+
 app.post("/api/exit", asyncHandler(async (request, response) => {
   const client = requireSupabase();
   const { plateNumber } = request.body;
