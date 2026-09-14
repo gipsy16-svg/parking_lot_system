@@ -14,8 +14,12 @@ const supabaseKey =
   process.env.SUPABASE_PUBLISHABLE_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY;
 const frontendOrigin = process.env.FRONTEND_ORIGIN;
+const hasValidSupabaseUrl =
+  Boolean(supabaseUrl) &&
+  !supabaseUrl.includes("your-project-ref") &&
+  safeHost(supabaseUrl) !== "Invalid SUPABASE_URL";
 
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const supabase = hasValidSupabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 app.use(
   cors({
@@ -97,7 +101,7 @@ app.post("/api/exit", asyncHandler(async (request, response) => {
 app.use((error, _request, response, _next) => {
   const status = error.status || 500;
   const message =
-    error.name === "TypeError" && error.message === "fetch failed"
+    String(error.message || "").includes("fetch failed")
       ? "Backend cannot reach Supabase. Check SUPABASE_URL and SUPABASE_ANON_KEY in Render, then redeploy."
       : error.message || "Backend error";
 
@@ -114,7 +118,7 @@ app.listen(port, () => {
 function requireSupabase() {
   if (!supabase) {
     const error = new Error(
-      "Supabase backend is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY in .env, then restart npm run dev.",
+      "Supabase backend is not configured. Add your real SUPABASE_URL and SUPABASE_ANON_KEY in Render, then redeploy.",
     );
     error.status = 500;
     throw error;
@@ -125,7 +129,12 @@ function requireSupabase() {
 
 async function checkSupabaseConnection() {
   if (!supabase) {
-    return { ok: false, error: "Missing SUPABASE_URL or SUPABASE_ANON_KEY." };
+    return {
+      ok: false,
+      error: hasValidSupabaseUrl
+        ? "Missing SUPABASE_ANON_KEY."
+        : "SUPABASE_URL is missing, invalid, or still uses the placeholder your-project-ref.supabase.co.",
+    };
   }
 
   try {
