@@ -215,7 +215,6 @@ function App() {
     <main className="shell">
       <header className="app-header">
         <div>
-          <p className="eyebrow">React + Supabase</p>
           <h1>Parking Lot Management System</h1>
         </div>
         <div className={`database-pill ${hasBackendConfig ? "connected" : ""}`}>
