@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Activity,
   Car,
+  CheckCircle2,
+  CircleDot,
+  Clock3,
   Database,
   DoorOpen,
   LogIn,
+  ParkingCircle,
   RefreshCcw,
   LoaderCircle,
 } from "lucide-react";
@@ -137,24 +142,34 @@ function App() {
   return (
     <main className="shell">
       <header className="app-header">
-        <div>
+        <div className="header-copy">
+          <span className="eyebrow">Parking Operations</span>
           <h1>Parking Lot Management System</h1>
+          <p>Live slot monitoring and vehicle flow control</p>
         </div>
         <div className={`database-pill ${hasBackendConfig ? "connected" : ""}`}>
+          <span className="connection-dot" aria-hidden="true" />
           <Database size={18} aria-hidden="true" />
           <span>{hasBackendConfig ? "Backend API" : "Backend not configured"}</span>
         </div>
       </header>
 
       <section className="overview-grid" aria-label="Parking overview">
-        <Metric label="Total Slots" value={TOTAL_SLOTS} />
-        <Metric label="Occupied" value={parked.length} />
-        <Metric label="Available" value={TOTAL_SLOTS - parked.length} />
-        <Metric label="Waiting" value={waiting.length} />
+        <Metric icon={ParkingCircle} label="Total Slots" value={TOTAL_SLOTS} tone="total" />
+        <Metric icon={Car} label="Occupied" value={parked.length} tone="occupied" />
+        <Metric icon={CheckCircle2} label="Available" value={TOTAL_SLOTS - parked.length} tone="available" />
+        <Metric icon={Clock3} label="Waiting" value={waiting.length} tone="waiting" />
       </section>
 
       <section className="toolbar" aria-label="Status">
-        <p>{loading ? "Loading records..." : notice}</p>
+        <div className="status-message" aria-live="polite">
+          {loading ? (
+            <LoaderCircle className="spin-icon" size={18} aria-hidden="true" />
+          ) : (
+            <Activity size={18} aria-hidden="true" />
+          )}
+          <p>{loading ? "Loading records..." : notice}</p>
+        </div>
         <button
           type="button"
           className="icon-button"
@@ -169,29 +184,47 @@ function App() {
       <section className="main-grid">
         <div className="slots-panel">
           <div className="section-heading">
-            <h2>Parking Slots</h2>
+            <div>
+              <span className="section-kicker">Capacity</span>
+              <h2>Parking Slots</h2>
+            </div>
+            <span className="panel-count">{parked.length}/{TOTAL_SLOTS} occupied</span>
           </div>
           <div className="slots-grid">
             {slotIds().map((slotId) => {
               const carInSlot = slotMap.get(slotId);
+
               return (
                 <article key={slotId} className={`slot-card ${carInSlot ? "occupied" : "available"}`}>
                   <div className="slot-topline">
                     <strong>{slotId}</strong>
-                    <span>{carInSlot ? "Occupied" : "Available"}</span>
+                    <span>
+                      <CircleDot size={12} aria-hidden="true" />
+                      {carInSlot ? "Occupied" : "Available"}
+                    </span>
                   </div>
                   {carInSlot ? (
-                    <>
-                      <div className="slot-vehicle">
-                        <Car size={20} aria-hidden="true" />
-                        <div>
-                          <strong>{carInSlot.plate_number}</strong>
-                          <span>{carInSlot.owner_name}</span>
-                        </div>
+                    <div className="slot-vehicle">
+                      <span className="slot-icon">
+                        <Car size={19} aria-hidden="true" />
+                      </span>
+                      <div>
+                        <span>Plate</span>
+                        <strong>{carInSlot.plate_number}</strong>
                       </div>
-                    </>
+                      <div>
+                        <span>Owner</span>
+                        <strong>{carInSlot.owner_name}</strong>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="slot-empty">Open</div>
+                    <div className="slot-empty">
+                      <CheckCircle2 size={20} aria-hidden="true" />
+                      <div>
+                        <strong>Open</strong>
+                        <span>Ready</span>
+                      </div>
+                    </div>
                   )}
                 </article>
               );
@@ -202,7 +235,10 @@ function App() {
         <div className="forms-panel">
           <form className="form-block" onSubmit={handleArrival}>
             <div className="section-heading">
-              <h2>Car Arrival</h2>
+              <div>
+                <span className="section-kicker">Entry</span>
+                <h2>Car Arrival</h2>
+              </div>
             </div>
             <label>
               Plate Number
@@ -259,6 +295,7 @@ function App() {
             </label>
             <button
               type="submit"
+              className="primary-action"
               disabled={arrivalLoading || exitLoading || !hasBackendConfig}
             >
               {arrivalLoading ? (
@@ -276,7 +313,10 @@ function App() {
 
           <form className="form-block" onSubmit={handleExit}>
             <div className="section-heading">
-              <h2>Car Exit</h2>
+              <div>
+                <span className="section-kicker">Exit</span>
+                <h2>Car Exit</h2>
+              </div>
             </div>
             <label>
               Plate Number
@@ -286,7 +326,7 @@ function App() {
                 placeholder="ABC123"
               />
             </label>
-            <button type="submit" disabled={arrivalLoading || exitLoading || !hasBackendConfig}>
+            <button className="exit-action" type="submit" disabled={arrivalLoading || exitLoading || !hasBackendConfig}>
               {exitLoading ? (
                 <LoaderCircle className="spin-icon" size={18} aria-hidden="true" />
               ) : (
@@ -299,7 +339,7 @@ function App() {
       </section>
 
       <section className="data-grid">
-        <TablePanel title="Waiting Queue">
+        <TablePanel title="Waiting Queue" eyebrow="Queue">
           <table>
             <thead>
               <tr>
@@ -312,7 +352,9 @@ function App() {
             <tbody>
               {waiting.map((record) => (
                 <tr key={record.record_id}>
-                  <td>{record.queue_number}</td>
+                  <td>
+                    <span className="queue-badge">{record.queue_number}</span>
+                  </td>
                   <td>{record.plate_number}</td>
                   <td>{record.owner_name}</td>
                   <td>{record.vehicle_type}</td>
@@ -323,7 +365,7 @@ function App() {
           </table>
         </TablePanel>
 
-        <TablePanel title="Parking Records">
+        <TablePanel title="Parking Records" eyebrow="History">
           <table>
             <thead>
               <tr>
@@ -353,25 +395,32 @@ function App() {
           </table>
         </TablePanel>
       </section>
-
     </main>
   );
 }
 
-function Metric({ label, value }) {
+function Metric({ icon: Icon, label, value, tone }) {
   return (
-    <div className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <div className={`metric ${tone}`}>
+      <span className="metric-icon">
+        <Icon size={22} aria-hidden="true" />
+      </span>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
     </div>
   );
 }
 
-function TablePanel({ title, children }) {
+function TablePanel({ title, eyebrow, children }) {
   return (
     <div className="table-panel">
       <div className="section-heading">
-        <h2>{title}</h2>
+        <div>
+          <span className="section-kicker">{eyebrow}</span>
+          <h2>{title}</h2>
+        </div>
       </div>
       <div className="table-scroll">{children}</div>
     </div>
