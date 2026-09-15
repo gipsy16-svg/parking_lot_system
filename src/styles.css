@@ -246,25 +246,6 @@ h2 {
   font-weight: 800;
 }
 
-.slot-update-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 9px;
-  border-radius: 8px;
-  color: #7b271e;
-  background: #ffe0dc;
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
-.slot-update-button:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
 .forms-panel {
   display: grid;
   gap: 14px;
@@ -317,22 +298,6 @@ select:focus {
 
 .form-block button:disabled {
   background: #789bad;
-}
-
-.form-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-}
-
-.form-block .secondary-button {
-  color: #1f5f7a;
-  background: #e8f1f6;
-}
-
-.update-form {
-  padding-top: 16px;
-  border-top: 1px solid #e4e9ee;
 }
 
 .form-block + .form-block {

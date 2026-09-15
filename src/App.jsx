@@ -4,11 +4,8 @@ import {
   Database,
   DoorOpen,
   LogIn,
-  Pencil,
   RefreshCcw,
   LoaderCircle,
-  Save,
-  X,
 } from "lucide-react";
 import {
   arriveVehicle,
@@ -18,7 +15,6 @@ import {
   slotIds,
   sortRecords,
   TOTAL_SLOTS,
-  updateVehicle,
 } from "./lib/parkingService";
 
 const vehicleTypes = ["Car", "Motorcycle", "Van", "Truck"];
@@ -29,7 +25,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [arrivalLoading, setArrivalLoading] = useState(false);
   const [exitLoading, setExitLoading] = useState(false);
-  const [updateLoading, setUpdateLoading] = useState(false);
   const [notice, setNotice] = useState("Ready");
   const [arrivalForm, setArrivalForm] = useState({
     plateNumber: "",
@@ -37,7 +32,6 @@ function App() {
     vehicleType: "Car",
     slotId: "",
   });
-  const [updateForm, setUpdateForm] = useState(null);
   const [exitPlate, setExitPlate] = useState("");
 
   const parked = useMemo(() => records.filter((record) => record.status === "Parked"), [records]);
@@ -57,13 +51,6 @@ function App() {
     () => slotIds().filter((slotId) => !slotMap.has(slotId)),
     [slotMap],
   );
-  const updateSlotOptions = useMemo(() => {
-    if (!updateForm?.slotId) {
-      return availableSlots;
-    }
-
-    return [updateForm.slotId, ...availableSlots.filter((slotId) => slotId !== updateForm.slotId)];
-  }, [availableSlots, updateForm]);
 
   const refreshRecords = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
@@ -147,37 +134,6 @@ function App() {
     }
   }
 
-  async function handleUpdate(event) {
-    event.preventDefault();
-    if (!updateForm) {
-      return;
-    }
-
-    setUpdateLoading(true);
-    try {
-      const result = await updateVehicle(updateForm);
-      setNotice(result.message);
-      if (result.ok) {
-        setUpdateForm(null);
-      }
-      await refreshRecords();
-    } catch (error) {
-      setNotice(error.message);
-    } finally {
-      setUpdateLoading(false);
-    }
-  }
-
-  function startUpdate(record) {
-    setUpdateForm({
-      recordId: record.record_id,
-      plateNumber: record.plate_number,
-      ownerName: record.owner_name,
-      vehicleType: record.vehicle_type,
-      slotId: record.slot_id,
-    });
-  }
-
   return (
     <main className="shell">
       <header className="app-header">
@@ -233,15 +189,6 @@ function App() {
                           <span>{carInSlot.owner_name}</span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="slot-update-button"
-                        onClick={() => startUpdate(carInSlot)}
-                        disabled={updateLoading || !hasBackendConfig}
-                      >
-                        <Pencil size={14} aria-hidden="true" />
-                        Update
-                      </button>
                     </>
                   ) : (
                     <div className="slot-empty">Open</div>
@@ -326,76 +273,6 @@ function App() {
                   : "Enter Parking Lot"}
             </button>
           </form>
-
-          {updateForm && (
-            <form className="form-block update-form" onSubmit={handleUpdate}>
-              <div className="section-heading">
-                <h2>Update Vehicle</h2>
-              </div>
-              <label>
-                Plate Number
-                <input
-                  value={updateForm.plateNumber}
-                  onChange={(event) =>
-                    setUpdateForm((current) => ({ ...current, plateNumber: event.target.value }))
-                  }
-                  placeholder="ABC123"
-                />
-              </label>
-              <label>
-                Owner Name
-                <input
-                  value={updateForm.ownerName}
-                  onChange={(event) =>
-                    setUpdateForm((current) => ({ ...current, ownerName: event.target.value }))
-                  }
-                  placeholder="Owner"
-                />
-              </label>
-              <label>
-                Vehicle Type
-                <select
-                  value={updateForm.vehicleType}
-                  onChange={(event) =>
-                    setUpdateForm((current) => ({ ...current, vehicleType: event.target.value }))
-                  }
-                >
-                  {vehicleTypes.map((type) => (
-                    <option key={type}>{type}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Parking Slot
-                <select
-                  value={updateForm.slotId}
-                  onChange={(event) =>
-                    setUpdateForm((current) => ({ ...current, slotId: event.target.value }))
-                  }
-                >
-                  {updateSlotOptions.map((slotId) => (
-                    <option key={slotId} value={slotId}>
-                      {slotId}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="form-actions">
-                <button type="button" className="secondary-button" onClick={() => setUpdateForm(null)}>
-                  <X size={18} aria-hidden="true" />
-                  Cancel
-                </button>
-                <button type="submit" disabled={arrivalLoading || exitLoading || updateLoading || !hasBackendConfig}>
-                  {updateLoading ? (
-                    <LoaderCircle className="spin-icon" size={18} aria-hidden="true" />
-                  ) : (
-                    <Save size={18} aria-hidden="true" />
-                  )}
-                  {updateLoading ? "Updating..." : "Save Update"}
-                </button>
-              </div>
-            </form>
-          )}
 
           <form className="form-block" onSubmit={handleExit}>
             <div className="section-heading">
