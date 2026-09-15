@@ -312,14 +312,18 @@ function App() {
             </label>
             <button
               type="submit"
-              disabled={arrivalLoading || exitLoading || !hasBackendConfig || availableSlots.length === 0}
+              disabled={arrivalLoading || exitLoading || !hasBackendConfig}
             >
               {arrivalLoading ? (
                 <LoaderCircle className="spin-icon" size={18} aria-hidden="true" />
               ) : (
                 <LogIn size={18} aria-hidden="true" />
               )}
-              {arrivalLoading ? "Parking..." : "Enter Parking Lot"}
+              {arrivalLoading
+                ? "Parking..."
+                : availableSlots.length === 0
+                  ? "Join Waiting Queue"
+                  : "Enter Parking Lot"}
             </button>
           </form>
 

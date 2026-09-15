@@ -8,8 +8,9 @@ dotenv.config();
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  supabaseServiceRoleKey ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.SUPABASE_PUBLISHABLE_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY;
@@ -86,17 +87,30 @@ app.post("/api/arrive", asyncHandler(async (request, response) => {
 
 app.post("/api/update", asyncHandler(async (request, response) => {
   const client = requireSupabase();
-  const { recordId, plateNumber, ownerName, vehicleType, slotId } = request.body;
+  const updateArgs = buildUpdateVehicleArgs(request.body);
 
   const { data, error } = await client.rpc("update_vehicle", {
-    target_record_id: String(recordId || "").trim(),
-    plate_number: String(plateNumber || "").trim().toUpperCase(),
-    owner_name: String(ownerName || "").trim(),
-    vehicle_type: String(vehicleType || "").trim(),
-    requested_slot: String(slotId || "").trim().toUpperCase(),
+    target_record_id: updateArgs.recordId,
+    plate_number: updateArgs.plateNumber,
+    owner_name: updateArgs.ownerName,
+    vehicle_type: updateArgs.vehicleType,
+    requested_slot: updateArgs.slotId,
   });
 
   if (error) {
+    if (isMissingUpdateVehicleFunction(error)) {
+      if (supabaseServiceRoleKey) {
+        response.json(await updateVehicleWithoutRpc(client, updateArgs));
+        return;
+      }
+
+      const setupError = new Error(
+        "Supabase update_vehicle function is missing. Run supabase/add_update_vehicle.sql in the Supabase SQL Editor, then try Save Update again.",
+      );
+      setupError.status = 500;
+      throw setupError;
+    }
+
     throw error;
   }
 
@@ -145,6 +159,118 @@ function requireSupabase() {
   }
 
   return supabase;
+}
+
+function buildUpdateVehicleArgs({ recordId, plateNumber, ownerName, vehicleType, slotId }) {
+  return {
+    recordId: String(recordId || "").trim(),
+    plateNumber: String(plateNumber || "").trim().toUpperCase(),
+    ownerName: String(ownerName || "").trim(),
+    vehicleType: String(vehicleType || "").trim(),
+    slotId: String(slotId || "").trim().toUpperCase(),
+  };
+}
+
+function validateUpdateVehicleArgs({ recordId, plateNumber, ownerName, vehicleType, slotId }) {
+  const validVehicleTypes = new Set(["Car", "Motorcycle", "Van", "Truck"]);
+  const validSlots = new Set(["P001", "P002", "P003", "P004", "P005"]);
+
+  if (!recordId) {
+    return "Record ID is required.";
+  }
+
+  if (!plateNumber || !ownerName || !vehicleType) {
+    return "Plate number, owner name, and vehicle type are required.";
+  }
+
+  if (!validVehicleTypes.has(vehicleType)) {
+    return "Vehicle type is invalid.";
+  }
+
+  if (!validSlots.has(slotId)) {
+    return "Parking slot is invalid.";
+  }
+
+  return null;
+}
+
+async function updateVehicleWithoutRpc(client, updateArgs) {
+  const validationMessage = validateUpdateVehicleArgs(updateArgs);
+
+  if (validationMessage) {
+    return { ok: false, message: validationMessage };
+  }
+
+  const { data: activeRecords, error: activeRecordsError } = await client
+    .from("parking_records")
+    .select("id, record_id, plate_number, status, slot_id")
+    .in("status", ["Parked", "Waiting"]);
+
+  if (activeRecordsError) {
+    throw activeRecordsError;
+  }
+
+  const target = activeRecords.find((record) => record.record_id === updateArgs.recordId);
+
+  if (!target) {
+    return {
+      ok: false,
+      message: `${updateArgs.recordId} is not an active parking record.`,
+    };
+  }
+
+  const duplicatePlate = activeRecords.some(
+    (record) =>
+      record.id !== target.id &&
+      String(record.plate_number || "").toUpperCase() === updateArgs.plateNumber,
+  );
+
+  if (duplicatePlate) {
+    return {
+      ok: false,
+      message: `${updateArgs.plateNumber} is already parked or waiting.`,
+    };
+  }
+
+  const occupiedSlot = activeRecords.some(
+    (record) =>
+      record.id !== target.id &&
+      record.status === "Parked" &&
+      record.slot_id === updateArgs.slotId,
+  );
+
+  if (occupiedSlot) {
+    return {
+      ok: false,
+      message: `${updateArgs.slotId} is already occupied.`,
+    };
+  }
+
+  const { error: updateError } = await client
+    .from("parking_records")
+    .update({
+      plate_number: updateArgs.plateNumber,
+      owner_name: updateArgs.ownerName,
+      vehicle_type: updateArgs.vehicleType,
+      slot_id: target.status === "Parked" ? updateArgs.slotId : null,
+    })
+    .eq("id", target.id);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  return {
+    ok: true,
+    message: `${updateArgs.plateNumber} updated successfully.`,
+  };
+}
+
+function isMissingUpdateVehicleFunction(error) {
+  return (
+    error?.code === "PGRST202" ||
+    String(error?.message || "").includes("Could not find the function public.update_vehicle")
+  );
 }
 
 async function checkSupabaseConnection() {
