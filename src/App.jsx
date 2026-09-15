@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Car,
   Database,
@@ -22,6 +22,7 @@ import {
 } from "./lib/parkingService";
 
 const vehicleTypes = ["Car", "Motorcycle", "Van", "Truck"];
+const AUTO_REFRESH_INTERVAL_MS = 5000;
 
 function App() {
   const [records, setRecords] = useState([]);
@@ -64,21 +65,38 @@ function App() {
     return [updateForm.slotId, ...availableSlots.filter((slotId) => slotId !== updateForm.slotId)];
   }, [availableSlots, updateForm]);
 
-  async function refreshRecords() {
-    setLoading(true);
+  const refreshRecords = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
+
     try {
       const rows = await listRecords();
       setRecords(rows);
     } catch (error) {
       setNotice(error.message);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  }
+  }, []);
 
   useEffect(() => {
     refreshRecords();
-  }, []);
+  }, [refreshRecords]);
+
+  useEffect(() => {
+    if (!hasBackendConfig) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      refreshRecords({ silent: true });
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [refreshRecords]);
 
   useEffect(() => {
     setArrivalForm((current) => {
